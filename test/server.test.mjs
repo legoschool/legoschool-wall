@@ -1,0 +1,31 @@
+import {test,after} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtempSync,rmSync,readFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import {randomBytes} from 'node:crypto';
+const dir=mkdtempSync(path.join(tmpdir(),'wall-test-'));process.env.DATA_DIR=dir;
+const {server}=await import('../server.mjs');await new Promise(r=>server.listen(0,'127.0.0.1',r));
+const base='http://127.0.0.1:'+server.address().port;
+async function req(p,method='GET',data,cookie='',extra={}){const r=await fetch(base+'/api'+p,{method,headers:{'Content-Type':'application/json',Cookie:cookie,...extra},...(data?{body:JSON.stringify(data)}:{})});return {status:r.status,body:await r.json(),cookie:r.headers.getSetCookie().map(c=>c.split(';')[0]).join('; ')}}
+after(async()=>{server.closeAllConnections();await new Promise(r=>server.close(r));rmSync(dir,{recursive:true,force:true})});
+test('only password-authenticated administrator can create or manage boards',async()=>{
+assert.equal((await req('/rooms','POST',{topic:'unauthorized'})).status,403);
+for(const invalid of ['123','12345','abcd','12 3'])assert.equal((await req('/admin/setup','POST',{password:invalid})).status,400);
+const pw='0427',setup=await req('/admin/setup','POST',{password:pw});assert.equal(setup.status,200);const cookie=setup.cookie;
+assert.equal((await req('/admin/setup','POST',{password:pw})).status,409);
+const created=await req('/rooms','POST',{topic:'게시판'},cookie);assert.equal(created.status,200);assert.ok(!created.body.key);const code=created.body.code;
+const guest=await req('/rooms/'+code);assert.equal(guest.body.isAdmin,false);
+assert.equal((await req('/rooms/'+code+'/posts','POST',{text:'내용'},guest.cookie)).status,200);
+const loaded=await req('/rooms/'+code,'GET',undefined,cookie);const id=loaded.body.posts[0].id;
+assert.equal((await req('/rooms/'+code+'/manage','PATCH',{closed:true},guest.cookie,{'X-Host-Key':'legacy'})).status,403);
+assert.equal((await req('/rooms/'+code+'/manage','PATCH',{closed:true},cookie)).status,200);
+assert.equal((await req('/rooms/'+code+'/posts','POST',{text:'내용'},guest.cookie)).status,409);
+await req('/admin/logout','POST',{},cookie);assert.equal((await req('/rooms','POST',{topic:'expired'},cookie)).status,403);
+const logged=await req('/admin/login','POST',{password:pw});assert.equal(logged.status,200);
+assert.equal((await req('/rooms/'+code,'DELETE',{},logged.cookie)).status,200);
+assert.equal((await req('/rooms/'+code)).status,404);
+assert.ok(!readFileSync(path.join(dir,'admin.json'),'utf8').includes(pw));
+for(let i=0;i<5;i++)assert.equal((await req('/admin/login','POST',{password:'wrong'})).status,401);
+assert.equal((await req('/admin/login','POST',{password:pw})).status,429);
+});
