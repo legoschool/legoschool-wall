@@ -30,3 +30,38 @@ body{min-height:100vh;display:flex;flex-direction:column}main{width:100%}.header
 @media(prefers-reduced-motion:reduce){.note{transition:none}.note:hover{transform:none}}
 
 #home .entry-card{box-shadow:none}
+
+/* Subtle brick accents; reading surfaces stay light. */
+:root{--yellow:#ffd43b;--blue:#1764d9;--red:#dc493d;background:#f7f8fb}
+body:before{content:"";display:block;height:6px;flex:none;background:linear-gradient(90deg,#ffd43b 0 28%,#1764d9 28% 57%,#dc493d 57% 78%,#379a71 78%)}
+.header{padding-top:27px;padding-bottom:27px}.brand-icon{background:#ffd43b;color:#725500;border-radius:12px;box-shadow:0 3px 0 #deb327,inset 0 1px 0 #fff8;transform:rotate(-4deg)}.brand b{color:#1764d9}
+.header nav a{border:1px solid #e0e5ee;border-radius:11px;background:#fff;padding:10px 15px;box-shadow:0 2px 0 #e4e8f0}
+#home h1{position:relative}#home h1:after{content:"";display:block;width:68px;height:7px;border-radius:3px;background:#ffd43b;margin-top:19px}
+.code-cells span{border-radius:13px;border-color:#dce2ec;box-shadow:0 4px 0 #e4e9f1,inset 0 1px 0 #fff}
+.code-cells span:nth-child(1),.code-cells span:nth-child(4){border-bottom:3px solid #ffd43b}
+.code-cells span:nth-child(2),.code-cells span:nth-child(5){border-bottom:3px solid #72a2ed}
+.code-cells span:nth-child(3),.code-cells span:nth-child(6){border-bottom:3px solid #ec8f87}
+.btn,#home .btn{border-radius:13px;box-shadow:0 4px 0 #104aa5,inset 0 1px 0 #ffffff35;transition:transform .15s,box-shadow .15s}.btn.red{box-shadow:0 4px 0 #a9342b}.btn:hover{filter:brightness(1.04);transform:translateY(-1px)}.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #104aa5}
+.preview-board{position:relative;border-radius:28px;border:1px solid #dde4ec;background:radial-gradient(circle,#d9e3f066 1px,transparent 1.3px) 0 0/22px 22px,linear-gradient(145deg,#f7faff,#fff 50%,#fffaf0);box-shadow:0 6px 0 #e6eaf1,0 26px 40px -25px #23375355}
+.preview-board:before{content:"";position:absolute;top:0;left:32px;width:102px;height:5px;background:linear-gradient(90deg,#ffd43b 0 33%,#1764d9 33% 66%,#dc493d 66%);border-radius:0 0 5px 5px}
+.preview-tag{color:#746024;background:#fff9dd;border-color:#efe3ad}
+.note{position:relative;border-top:3px solid var(--brick);background:linear-gradient(150deg,var(--tint),#fff 70%);box-shadow:0 4px 0 color-mix(in srgb,var(--edge) 65%,white),0 13px 22px -15px #26364d50}
+.note.yellow{--brick:#edbe26;--tint:#fffae9;--edge:#eee0b5}
+.note.blue{--brick:#6a9cdf;--tint:#f1f6ff;--edge:#d6e2f3}
+.note.red{--brick:#e47a71;--tint:#fff4f2;--edge:#f0d9d5}
+.note.green{--brick:#63ad90;--tint:#eff9f5;--edge:#d1e7dd}
+.note.purple{--brick:#a98bce;--tint:#f7f3fc;--edge:#e3d9ef}
+.note:before{content:"";position:absolute;right:23px;top:-8px;width:32px;height:10px;background:radial-gradient(ellipse at center,var(--brick) 0 61%,transparent 65%) 0 0/12px 10px no-repeat,radial-gradient(ellipse at center,var(--brick) 0 61%,transparent 65%) 20px 0/12px 10px no-repeat;filter:drop-shadow(0 1px 0 #fff8)}
+.note:hover{box-shadow:0 4px 0 color-mix(in srgb,var(--edge) 65%,white),0 17px 25px -15px #26364d60}
+.preview-notes{row-gap:24px}.note-text{color:#252b36}
+.compose-panel{border-top:4px solid #ffd43b;box-shadow:0 4px 0 #e8ecf2,0 12px 25px -20px #24364c40}
+.room-top{background:#f7f8fbf5}
+.code-display{background:#fff9df;border-color:#eddfaa;box-shadow:0 3px 0 #e8dca8}.code-display b{color:#27374e}
+.qr-button,.qr-button:has(.pinned-qr){box-shadow:0 3px 0 #e6eaf1;border-color:#dfe5ed;background:#fff}
+.host-tools button{border-radius:10px;box-shadow:0 2px 0 #e7ebf2}.host-tools button:first-child{background:#fff5cb;border-color:#eddfa5;color:#615019}
+.swatch,.swatch input{border-radius:9px}.swatch{box-shadow:0 3px 0 #00000014}.swatch:has(input:checked){outline-color:#34465e}
+.admin-row{border-left:4px solid #ffd43b;box-shadow:0 3px 0 #e6ebf2,0 7px 18px -15px #24364c40}.admin-row:nth-child(3n+2){border-left-color:#78a4e5}.admin-row:nth-child(3n){border-left-color:#e99189}
+#admin-auth{border-top:4px solid #ffd43b}
+dialog{border-top:5px solid #ffd43b}.share-code{background:#fff6d2;color:#283850!important;box-shadow:0 3px 0 #e9deb1}
+.site-footer{position:relative}.site-footer:before{content:"";position:absolute;top:-3px;left:0;width:58px;height:5px;background:linear-gradient(90deg,#ffd43b 0 33%,#1764d9 33% 66%,#dc493d 66%);border-radius:3px}
+@media(max-width:760px){.header{padding-top:21px;padding-bottom:21px}.header nav a{padding:8px 10px}#home h1:after{margin-top:14px;height:6px}.preview-board{border-radius:24px}.room-top{padding-top:13px}.note{padding-top:22px}.preview-notes .note{padding-top:18px}}
