@@ -13,8 +13,8 @@ $('#create-form').onsubmit=async e=>{e.preventDefault();const b=$('#create-submi
 }
 $('#create').onclick=createDialog;
 $('#join-form').onsubmit=async e=>{e.preventDefault();$('#join-error').textContent='';const value=$('#code').value;if(!/^\d{6}$/.test(value)){$('#join-error').textContent='숫자 6자리를 입력하세요.';return}const b=e.submitter;b.disabled=true;try{await api('/'+value);location.href='/?room='+value}catch(e){$('#join-error').textContent=e.message;b.disabled=false}};
-$('#code').onpaste=e=>{const text=e.clipboardData.getData('text').trim();const digits=text.replace(/[\s-]/g,'');if(/^\d{6}$/.test(digits)){e.preventDefault();e.target.value=digits;$('#join-error').textContent=''}};
-$('#code').oninput=e=>{e.target.value=e.target.value.replace(/\D/g,'');$('#join-error').textContent=''};
+$('#code').onpaste=e=>{const text=e.clipboardData.getData('text').trim();const digits=text.replace(/[\s-]/g,'');if(/^\d{6}$/.test(digits)){e.preventDefault();e.target.value=digits;paintCode();$('#join-error').textContent=''}};
+$('#code').oninput=e=>{e.target.value=e.target.value.replace(/\D/g,'');paintCode();$('#join-error').textContent=''};
 $('#logout').onclick=async()=>{try{await request('/admin/logout','POST');location.href='/'}catch(e){toast(e.message)}};
 async function adminPage(){
 $('#home').hidden=true;$('#admin').hidden=false;
@@ -41,7 +41,7 @@ $('#room-code').textContent=code;$('#total').textContent=board.posts.length;
 $('#post-form').hidden=board.closed;$('#closed-note').hidden=!board.closed;$('#close-room').textContent=board.closed?'작성 재개':'작성 마감';$('#host-tools').hidden=!board.isAdmin;
 $('#pick').disabled=!board.posts.length;$('#empty').hidden=board.posts.length>0;
 const posts=[...board.posts].sort(sort==='top'?(a,b)=>b.likes-a.likes||b.created-a.created:(a,b)=>b.created-a.created);
-$('#feed').innerHTML=posts.map(p=>'<article class="note '+colors[p.color]+'" data-id="'+esc(p.id)+'"><div class="studs" aria-hidden="true"><i></i><i></i><i></i><i></i></div><p class="note-text">'+esc(p.text)+'</p><footer class="note-footer"><span>'+esc(p.nick)+(p.mine?' · 나':'')+'</span><div class="note-actions">'+(p.mine||board.isAdmin?'<button class="delete" data-delete="'+esc(p.id)+'" aria-label="글 삭제">×</button>':'')+'<button class="heart" data-like="'+esc(p.id)+'" aria-label="공감 '+p.likes+'개" aria-pressed="'+p.liked+'">'+(p.liked?'♥':'♡')+' '+p.likes+'</button></div></footer></article>').join('');
+$('#feed').innerHTML=posts.map(p=>'<article class="note '+colors[p.color]+'" data-id="'+esc(p.id)+'"><p class="note-text">'+esc(p.text)+'</p><footer class="note-footer"><span>'+esc(p.nick)+(p.mine?' · 나':'')+'</span><div class="note-actions">'+(p.mine||board.isAdmin?'<button class="delete" data-delete="'+esc(p.id)+'" aria-label="글 삭제">×</button>':'')+'<button class="heart" data-like="'+esc(p.id)+'" aria-label="공감 '+p.likes+'개" aria-pressed="'+p.liked+'">'+(p.liked?'♥':'♡')+' '+p.likes+'</button></div></footer></article>').join('');
 }
 async function enter(){
 try{
@@ -99,3 +99,6 @@ const url=URL.createObjectURL(new Blob(['\ufeff'+lines.join('\r\n')],{type:'text
 $('#fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen()}catch{toast('전체 화면을 지원하지 않습니다.')}};
 document.addEventListener('fullscreenchange',()=>{document.body.classList.toggle('present',!!document.fullscreenElement);$('#fullscreen').textContent=document.fullscreenElement?'전체 화면 종료':'전체 화면'});
 window.addEventListener('beforeunload',()=>source?.close());enter();
+
+function paintCode(){document.querySelectorAll('.code-cells span').forEach((cell,i)=>{cell.textContent=$('#code').value[i]||'';cell.classList.toggle('current',i===Math.min($('#code').value.length,5))})}
+$('#code').addEventListener('focus',paintCode);paintCode();
