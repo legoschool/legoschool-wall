@@ -1,6 +1,7 @@
 const $=s=>document.querySelector(s),colors=['yellow','blue','red','green','purple'];
 const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const storage={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
+let photoData='',photoProcessing=false,photoVersion=0;
 let board,code,source,sort='new',timer,busy=false,adminStatus;
 function toast(text){$('#toast').textContent=text;$('#toast').hidden=false;clearTimeout(timer);timer=setTimeout(()=>$('#toast').hidden=true,3000)}
 function modal(html){$('#dialog-content').innerHTML=html;if(!$('#dialog').open)$('#dialog').showModal()}
@@ -40,8 +41,8 @@ $('#topic').textContent=board.topic;document.title=board.topic+' | 레고학교 
 $('#room-code').textContent=code;$('#total').textContent=board.posts.length;
 $('#post-form').hidden=board.closed;$('#closed-note').hidden=!board.closed;$('#close-room').textContent=board.closed?'작성 재개':'작성 마감';$('#host-tools').hidden=!board.isAdmin;
 $('#pick').disabled=!board.posts.length;$('#empty').hidden=board.posts.length>0;
-const posts=[...board.posts].sort(sort==='top'?(a,b)=>b.likes-a.likes||b.created-a.created:(a,b)=>b.created-a.created);
-$('#feed').innerHTML=posts.map(p=>'<article class="note '+colors[p.color]+'" data-id="'+esc(p.id)+'"><p class="note-text">'+esc(p.text)+'</p><footer class="note-footer"><span>'+esc(p.nick)+(p.mine?' · 나':'')+'</span><div class="note-actions">'+(p.mine||board.isAdmin?'<button class="delete" data-delete="'+esc(p.id)+'" aria-label="글 삭제">×</button>':'')+'<button class="heart" data-like="'+esc(p.id)+'" aria-label="공감 '+p.likes+'개" aria-pressed="'+p.liked+'">'+(p.liked?'♥':'♡')+' '+p.likes+'</button></div></footer></article>').join('');
+const posts=[...board.posts].sort((a,b)=>Number(!!b.pinned)-Number(!!a.pinned)||(sort==='top'?b.likes-a.likes:0)||b.created-a.created);
+$('#feed').innerHTML=posts.map(p=>'<article class="note '+colors[p.color]+'" data-id="'+esc(p.id)+'">'+(p.pinned?'<span class="pinned-label">고정</span>':'')+(p.text?'<p class="note-text">'+esc(p.text)+'</p>':'')+attachmentHtml(p)+'<footer class="note-footer"><span>'+esc(p.nick)+(p.mine?' · 나':'')+'</span><div class="note-actions">'+(board.isAdmin?'<button class="pin-post" data-pin="'+esc(p.id)+'" aria-pressed="'+!!p.pinned+'">'+(p.pinned?'고정 해제':'고정')+'</button>':'')+(p.mine||board.isAdmin?'<button class="delete" data-delete="'+esc(p.id)+'" aria-label="글 삭제">×</button>':'')+'<button class="heart" data-like="'+esc(p.id)+'" aria-label="공감 '+p.likes+'개" aria-pressed="'+p.liked+'">'+(p.liked?'♥':'♡')+' '+p.likes+'</button></div></footer></article>').join('');
 }
 async function enter(){
 try{
@@ -60,10 +61,12 @@ source.addEventListener('deleted',()=>{source.close();$('#dialog').close();missi
 function missing(msg){$('#room').hidden=true;$('#home').hidden=false;$('#join-error').textContent=msg;$('#code').focus()}
 $('#message').oninput=e=>$('#count').textContent=e.target.value.length+' / 140';
 $('#message').onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey))$('#post-form').requestSubmit()};
-$('#post-form').onsubmit=async e=>{e.preventDefault();if(busy)return;const text=$('#message').value.trim();if(!text)return $('#message').focus();busy=true;$('#send').disabled=true;
-const data={text,nick:$('#nick').value.trim(),color:Number(new FormData(e.target).get('color'))};
-try{await api('/'+code+'/posts','POST',data);storage.set('brick-nick',data.nick);$('#message').value='';$('#count').textContent='0 / 140';toast('등록되었습니다.')}catch(e){toast(e.message)}finally{busy=false;$('#send').disabled=false}};
-$('#feed').onclick=async e=>{const like=e.target.closest('[data-like]'),del=e.target.closest('[data-delete]');
+$('#post-form').onsubmit=async e=>{e.preventDefault();if(busy||photoProcessing)return;const text=$('#message').value.trim();if(!text&&!photoData&&!$('#attachment-link').value.trim())return toast('내용이나 첨부를 추가하세요.');busy=true;$('#send').disabled=true;
+const data={text,image:photoData,link:$('#attachment-link').value.trim(),nick:$('#nick').value.trim(),color:Number(new FormData(e.target).get('color'))};
+try{await api('/'+code+'/posts','POST',data);storage.set('brick-nick',data.nick);$('#message').value='';clearPhoto();$('#remove-link').click();$('#count').textContent='0 / 140';toast('등록되었습니다.')}catch(e){toast(e.message)}finally{busy=false;$('#send').disabled=false}};
+$('#feed').onclick=async e=>{const like=e.target.closest('[data-like]'),del=e.target.closest('[data-delete]'),pin=e.target.closest('[data-pin]'),photo=e.target.closest('[data-photo]');
+if(photo){const p=board.posts.find(p=>p.id===photo.dataset.photo);if(p?.image)modal('<h2 id="dialog-title">사진</h2><img class="photo-full" src="'+esc(p.image)+'" alt="첨부 사진">')}
+if(pin){pin.disabled=true;try{await api('/'+code+'/pin','PATCH',{id:pin.dataset.pin,pinned:pin.getAttribute('aria-pressed')!=='true'})}catch(e){toast(e.message)}finally{pin.disabled=false}}
 if(like){like.disabled=true;try{await api('/'+code+'/like','POST',{id:like.dataset.like})}catch(e){toast(e.message)}finally{like.disabled=false}}
 if(del){modal('<h2 id="dialog-title">글 삭제</h2><p>삭제한 글은 복구할 수 없습니다.</p><button class="btn red full" id="confirm-delete">삭제</button>');$('#confirm-delete').onclick=async()=>{try{await api('/'+code+'/posts','DELETE',{id:del.dataset.delete});$('#dialog').close()}catch(e){toast(e.message)}}}
 };
@@ -94,7 +97,7 @@ $('#copy-link').onclick=()=>copyText($('#join-link').value,'참여 링크 복사
 $('#join-link').onclick=e=>e.target.select();
 }catch(e){toast(e.message)}finally{button.disabled=false}
 };
-$('#export').onclick=()=>{const lines=['레고학교 담벼락',board.topic,'코드: '+code,'저장: '+new Date().toLocaleString('ko-KR'),'','글 '+board.posts.length+'개','',...board.posts.map((p,i)=>(i+1)+'. '+p.text+'\n   '+p.nick+' · 공감 '+p.likes)];
+$('#export').onclick=()=>{const lines=['레고학교 담벼락',board.topic,'코드: '+code,'저장: '+new Date().toLocaleString('ko-KR'),'','글 '+board.posts.length+'개','',...board.posts.map((p,i)=>(i+1)+'. '+(p.pinned?'[고정] ':'')+p.text+(p.link?'\n   '+p.link:'')+(p.image?'\n   사진: '+location.origin+p.image:'')+'\n   '+p.nick+' · 공감 '+p.likes)];
 const url=URL.createObjectURL(new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='레고학교_담벼락_'+code+'.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)};
 $('#fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen()}catch{toast('전체 화면을 지원하지 않습니다.')}};
 document.addEventListener('fullscreenchange',()=>{document.body.classList.toggle('present',!!document.fullscreenElement);$('#fullscreen').textContent=document.fullscreenElement?'전체 화면 종료':'전체 화면'});
@@ -102,3 +105,22 @@ window.addEventListener('beforeunload',()=>source?.close());enter();
 
 function paintCode(){document.querySelectorAll('.code-cells span').forEach((cell,i)=>{cell.textContent=$('#code').value[i]||'';cell.classList.toggle('current',i===Math.min($('#code').value.length,5))})}
 $('#code').addEventListener('focus',paintCode);paintCode();
+
+function attachmentHtml(p){
+let html=p.image?'<button class="post-photo" data-photo="'+esc(p.id)+'" aria-label="사진 확대"><img src="'+esc(p.image)+'" alt="첨부 사진" loading="lazy"></button>':'';
+if(p.link){try{const url=new URL(p.link);if(['http:','https:'].includes(url.protocol)){const label=url.hostname==='padlet.com'||url.hostname.endsWith('.padlet.com')?'패들렛 열기 ↗':url.hostname+' ↗';html+='<a class="post-link" href="'+esc(url.href)+'" target="_blank" rel="noopener noreferrer"><b>'+esc(label)+'</b><span>'+esc(url.href)+'</span></a>'}}catch{}}return html;
+}
+function clearPhoto(){photoVersion++;photoProcessing=false;$('#send').disabled=busy;photoData='';$('#photo').value='';$('#photo-preview').hidden=true;$('#photo-thumb').removeAttribute('src');$('#attachment-error').textContent=''}
+$('#remove-photo').onclick=clearPhoto;
+$('#choose-photo').onclick=()=>$('#photo').click();
+$('#add-link').onclick=()=>{$('#link-wrap').hidden=false;$('#add-link').setAttribute('aria-expanded','true');$('#attachment-link').focus()};
+$('#remove-link').onclick=()=>{$('#attachment-link').value='';$('#link-wrap').hidden=true;$('#add-link').setAttribute('aria-expanded','false')};
+$('#photo').onchange=async e=>{
+const file=e.target.files[0];if(!file)return;clearPhoto();const version=photoVersion;photoProcessing=true;$('#send').disabled=true;
+try{if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>15*1024*1024)throw Error('JPG·PNG·WebP 사진을 15MB 이하로 선택하세요.');
+const bitmap=await createImageBitmap(file);try{let size=Math.min(1,1400/Math.max(bitmap.width,bitmap.height));let data='';const canvas=document.createElement('canvas');
+for(let i=0;i<7;i++){canvas.width=Math.max(1,Math.round(bitmap.width*size));canvas.height=Math.max(1,Math.round(bitmap.height*size));const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);data=canvas.toDataURL('image/jpeg',.78);if(data.length<=380000)break;size*=.75}
+if(data.length>380000)throw Error('더 작은 사진을 선택하세요.');if(version!==photoVersion)return;photoData=data;$('#photo-thumb').src=data;$('#photo-preview').hidden=false;
+}finally{bitmap.close()}
+}catch(e){if(version===photoVersion)$('#attachment-error').textContent=e.message||'사진을 열 수 없습니다.'}finally{if(version===photoVersion){photoProcessing=false;$('#send').disabled=false}}
+};

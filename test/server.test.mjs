@@ -18,6 +18,21 @@ const created=await req('/rooms','POST',{topic:'게시판'},cookie);assert.equal
 const guest=await req('/rooms/'+code);assert.equal(guest.body.isAdmin,false);
 assert.equal((await req('/rooms/'+code+'/posts','POST',{text:'내용'},guest.cookie)).status,200);
 const loaded=await req('/rooms/'+code,'GET',undefined,cookie);const id=loaded.body.posts[0].id;
+
+assert.equal((await req('/rooms/'+code+'/pin','PATCH',{id,pinned:true},guest.cookie)).status,403);
+assert.equal((await req('/rooms/'+code+'/pin','PATCH',{id,pinned:true},cookie)).status,200);
+assert.equal((await req('/rooms/'+code)).body.posts[0].pinned,true);
+assert.equal((await req('/rooms/'+code+'/pin','PATCH',{id,pinned:false},cookie)).status,200);
+assert.equal((await req('/rooms/'+code+'/posts','POST',{text:'',link:'javascript:alert(1)'})).status,400);
+assert.equal((await req('/rooms/'+code+'/posts','POST',{image:'data:image/svg+xml;base64,PHN2Zz4='})).status,400);
+const image='data:image/jpeg;base64,'+Buffer.from([255,216,255,224,255,217]).toString('base64');
+assert.equal((await req('/rooms/'+code+'/posts','POST',{text:'',link:'https://padlet.com/example/board',image})).status,200);
+const post=(await req('/rooms/'+code)).body.posts.at(-1);assert.equal(post.link,'https://padlet.com/example/board');assert.ok(post.image.startsWith('/api/images/'));assert.equal(post.text,'');
+const photoRequest=()=>fetch(base+post.image);
+assert.equal((await photoRequest()).headers.get('content-type'),'image/jpeg');
+assert.equal((await req('/rooms/'+code+'/posts','DELETE',{id:post.id})).status,403);
+assert.equal((await req('/rooms/'+code+'/posts','DELETE',{id:post.id},cookie)).status,200);
+assert.equal((await photoRequest()).status,404);
 assert.equal((await req('/rooms/'+code+'/manage','PATCH',{closed:true},guest.cookie,{'X-Host-Key':'legacy'})).status,403);
 assert.equal((await req('/rooms/'+code+'/manage','PATCH',{closed:true},cookie)).status,200);
 assert.equal((await req('/rooms/'+code+'/posts','POST',{text:'내용'},guest.cookie)).status,409);
